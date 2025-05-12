@@ -2,6 +2,7 @@
 Model-Based Agent implementation
 """
 from typing import Any, Dict, List, Tuple
+import random
 
 from agent import Agent
 
@@ -26,6 +27,7 @@ class ModelBasedAgent(Agent):
         self.goal_position = None
         self.plan = []  # Sequence of actions to execute
         self.current_action = None
+        self.visit_counts = {}  # For visualization
         
     def perceive(self, percept: Any) -> None:
         """
@@ -39,6 +41,9 @@ class ModelBasedAgent(Agent):
         # Update the model with new information
         if "position" in percept:
             self.position = percept["position"]
+            
+            # Track visit count for visualization
+            self.visit_counts[self.position] = self.visit_counts.get(self.position, 0) + 1
             
         if "cell_content" in percept and percept["cell_content"] == 2:  # GOAL
             self.goal_position = self.position
@@ -64,7 +69,7 @@ class ModelBasedAgent(Agent):
                     self.model.setdefault((x, py), 0)  # Mark as potentially empty
             elif percept["goal_direction"] == "down":
                 # The goal is somewhere below us
-                for py in range(y+1, 100):  # Assuming the grid isn't infinite
+                for py in range(y+1, 100):  # Using a reasonable upper limit
                     self.model.setdefault((x, py), 0)
             elif percept["goal_direction"] == "left":
                 # The goal is somewhere to the left
@@ -72,7 +77,7 @@ class ModelBasedAgent(Agent):
                     self.model.setdefault((px, y), 0)
             elif percept["goal_direction"] == "right":
                 # The goal is somewhere to the right
-                for px in range(x+1, 100):
+                for px in range(x+1, 100):  # Using a reasonable upper limit
                     self.model.setdefault((px, y), 0)
                     
     def plan_path(self) -> List[str]:
@@ -87,7 +92,7 @@ class ModelBasedAgent(Agent):
             return []
             
         # A* search
-        open_set = set([self.position])
+        open_set = {self.position}  # Start with current position
         closed_set = set()
         
         g_score = {self.position: 0}  # Cost from start to current node
@@ -100,7 +105,7 @@ class ModelBasedAgent(Agent):
             current = min(open_set, key=lambda pos: f_score.get(pos, float('inf')))
             
             if current == self.goal_position:
-                # Reconstruct the path
+                # Goal reached! Reconstruct the path
                 path = []
                 while current in came_from:
                     prev = came_from[current]
@@ -125,8 +130,10 @@ class ModelBasedAgent(Agent):
             neighbors = [(x, y-1), (x, y+1), (x-1, y), (x+1, y)]
             
             for neighbor in neighbors:
-                # Skip if obstacle or unknown or already evaluated
-                if neighbor in closed_set or self.model.get(neighbor, -1) == 1:  # OBSTACLE
+                # Skip if obstacle, unknown, or already evaluated
+                if (neighbor in closed_set or 
+                    neighbor not in self.model or 
+                    self.model.get(neighbor) == 1):  # OBSTACLE
                     continue
                     
                 # Tentative g_score
@@ -184,13 +191,14 @@ class ModelBasedAgent(Agent):
                 ("left", (x-1, y)),
                 ("right", (x+1, y))
             ]:
-                if self.model.get(pos, -1) != 1:  # Not an obstacle
+                if pos not in self.model or self.model.get(pos) != 1:  # Not an obstacle
                     self.current_action = direction
                     return direction
                     
-            # If all directions are obstacles or unknown, just try up
-            self.current_action = "up"
-            return "up"
+            # If all directions are obstacles or unknown, try random
+            possible_directions = ["up", "down", "left", "right"]
+            self.current_action = random.choice(possible_directions)
+            return self.current_action
             
         # Execute the next step in the plan
         self.current_action = self.plan.pop(0)

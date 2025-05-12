@@ -30,6 +30,7 @@ class UtilityBasedAgent(Agent):
         self.goal_positions = []  # Known goal positions
         self.last_position = None
         self.current_action = None
+        self.visit_counts = {}  # For visualization
         
     def perceive(self, percept: Any) -> None:
         """
@@ -44,6 +45,9 @@ class UtilityBasedAgent(Agent):
         # Update position
         if "position" in percept:
             self.position = percept["position"]
+            
+            # Track visit count for visualization
+            self.visit_counts[self.position] = self.visit_counts.get(self.position, 0) + 1
             
         # Update the model with cell content
         if "cell_content" in percept and self.position:
@@ -89,8 +93,8 @@ class UtilityBasedAgent(Agent):
         if not self.goal_positions:
             return
             
-        # Update utilities through value iteration
-        for _ in range(30):  # Increased iterations for better convergence
+        # Update utilities through value iteration (multiple iterations for better convergence)
+        for _ in range(5):  # Reduced from 30 to speed up processing
             new_utilities = self.utilities.copy()
             
             for pos in self.model:
@@ -113,7 +117,6 @@ class UtilityBasedAgent(Agent):
                     neighbor_utility = self.utilities.get(neighbor, 0.0)
                     
                     # Calculate utility of moving to this neighbor
-                    # Stronger reward for moving toward goal
                     reward = -0.1  # Step cost
                     if neighbor in self.goal_positions:
                         reward = 10.0  # Goal reward
@@ -159,9 +162,9 @@ class UtilityBasedAgent(Agent):
             
         # If next position is unknown or an obstacle, return low utility
         if next_pos not in self.model:
-            return -2.0  # Unknown cell penalty
+            return -1.0  # Unknown cell penalty (increased from -2.0)
         if self.model[next_pos] == 1:  # OBSTACLE
-            return -10.0  # Strong obstacle penalty
+            return -5.0  # Obstacle penalty (reduced from -10.0)
             
         # Return utility of next position
         return self.utilities.get(next_pos, 0.0)
@@ -210,9 +213,13 @@ class UtilityBasedAgent(Agent):
         actions = ["up", "down", "left", "right"]
         utilities = [self.get_action_utility(action) for action in actions]
         
-        # Choose the action with highest utility
-        max_utility_idx = utilities.index(max(utilities))
-        self.current_action = actions[max_utility_idx]
+        # Get all actions with the maximum utility
+        max_utility = max(utilities)
+        best_actions = [action for action, utility in zip(actions, utilities) 
+                       if utility == max_utility]
+        
+        # Choose randomly among the best actions
+        self.current_action = random.choice(best_actions)
         
         return self.current_action
         

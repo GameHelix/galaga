@@ -5,6 +5,7 @@ from flask import Flask, render_template, jsonify, request
 import json
 import random
 import time
+from collections import deque
 
 # Import our agent implementations and grid world
 from reflex_agent import SimpleReflexAgent
@@ -35,6 +36,42 @@ def convert_dict_keys_to_str(obj):
     else:
         return obj
 
+def is_path_valid(grid, start, goal):
+    """
+    Check if there's a valid path from start to goal using BFS.
+    
+    Args:
+        grid: 2D grid of the environment (0=empty, 1=obstacle, 2=goal)
+        start: Starting position (x, y)
+        goal: Goal position (x, y)
+        
+    Returns:
+        bool: True if there is a valid path, False otherwise
+    """
+    width = len(grid[0])
+    height = len(grid)
+    visited = set()
+    queue = deque([start])
+    
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) == goal:
+            return True
+            
+        if (x, y) in visited:
+            continue
+            
+        visited.add((x, y))
+        
+        # Check all four directions
+        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            nx, ny = x + dx, y + dy
+            
+            if 0 <= nx < width and 0 <= ny < height and grid[ny][nx] != 1:  # Not an obstacle
+                queue.append((nx, ny))
+                
+    return False
+
 @app.route('/')
 def index():
     """Render the main page"""
@@ -62,29 +99,15 @@ def initialize_simulation():
     height = 8
     current_env = GridWorld(width=width, height=height, name="Web Visualization")
     
-    # Set up the maze structure
-    # Add outer walls
-    for x in range(current_env.width):
-        current_env.add_obstacle((x, 0))
-        current_env.add_obstacle((x, current_env.height-1))
-    for y in range(current_env.height):
-        current_env.add_obstacle((0, y))
-        current_env.add_obstacle((current_env.width-1, y))
+    # Define start and goal positions
+    start_pos = (1, 1)
+    goal_pos = (width - 2, height - 2)
     
-    # Add some internal walls to create a maze
-    for x in range(3, 12, 4):
-        for y in range(1, current_env.height-1):
-            if y != 3:
-                current_env.add_obstacle((x, y))
-                
-    for y in range(3, 7, 3):
-        for x in range(1, current_env.width-1):
-            if x != 5 and x != 9:
-                current_env.add_obstacle((x, y))
-    
-    # Add a goal
-    goal_pos = (current_env.width - 2, current_env.height - 2)
+    # Add goal
     current_env.add_goal(goal_pos)
+    
+    # Create a maze with guaranteed path
+    create_structured_maze(current_env, start_pos, goal_pos)
     
     # Create agent based on type
     if agent_type == 'reflex':
@@ -100,10 +123,72 @@ def initialize_simulation():
         current_agent = create_reflex_agent()
     
     # Add agent to environment at position (1, 1)
-    current_env.add_agent(current_agent, (1, 1))
+    current_env.add_agent(current_agent, start_pos)
     
     # Return initial state
     return jsonify(get_environment_state())
+
+def create_structured_maze(env, start_pos, goal_pos):
+    """
+    Create a structured maze with guaranteed path to goal.
+    
+    Args:
+        env: The GridWorld environment
+        start_pos: Starting position (x, y)
+        goal_pos: Goal position (x, y)
+    """
+    # Add outer walls
+    for x in range(env.width):
+        env.add_obstacle((x, 0))
+        env.add_obstacle((x, env.height-1))
+    for y in range(env.height):
+        env.add_obstacle((0, y))
+        env.add_obstacle((env.width-1, y))
+    
+    # Create a temporary grid to validate paths
+    temp_grid = [[env.EMPTY for _ in range(env.width)] for _ in range(env.height)]
+    
+    # Add outer walls to the temporary grid
+    for x in range(env.width):
+        temp_grid[0][x] = env.OBSTACLE
+        temp_grid[env.height-1][x] = env.OBSTACLE
+    for y in range(env.height):
+        temp_grid[y][0] = env.OBSTACLE
+        temp_grid[y][env.width-1] = env.OBSTACLE
+    
+    # Calculate evenly distributed gap positions
+    x_gaps = [env.width // 4, env.width // 2, 3 * env.width // 4]
+    y_gaps = [env.height // 3, 2 * env.height // 3]
+    
+    # Add vertical walls with gaps
+    wall_spacing = max(2, env.width // 5)
+    for x in range(wall_spacing, env.width-wall_spacing, wall_spacing):
+        # Choose a random gap from y_gaps to place in this wall
+        gap_y = random.choice(y_gaps)
+        
+        for y in range(1, env.height-1):
+            if y != gap_y:
+                # Check if adding this obstacle would still allow a path
+                temp_grid[y][x] = env.OBSTACLE
+                if is_path_valid(temp_grid, start_pos, goal_pos):
+                    env.add_obstacle((x, y))
+                else:
+                    temp_grid[y][x] = env.EMPTY
+                
+    # Add horizontal walls with gaps
+    wall_spacing = max(2, env.height // 4)
+    for y in range(wall_spacing, env.height-wall_spacing, wall_spacing):
+        # Choose a random gap from x_gaps to place in this wall
+        gap_x = random.choice(x_gaps)
+        
+        for x in range(1, env.width-1):
+            if x != gap_x:
+                # Check if adding this obstacle would still allow a path
+                temp_grid[y][x] = env.OBSTACLE
+                if is_path_valid(temp_grid, start_pos, goal_pos):
+                    env.add_obstacle((x, y))
+                else:
+                    temp_grid[y][x] = env.EMPTY
 
 def create_reflex_agent():
     """Create and configure a reflex agent with rules"""

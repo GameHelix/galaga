@@ -89,7 +89,7 @@ class QLearningAgent(Agent):
                 reward = 20.0  # Higher reward for reaching goal
                 self.goal_reached = True
             elif self.position == self.last_position:  # Hit obstacle
-                reward = -10.0  # Stronger penalty for hitting obstacles
+                reward = -5.0  # Penalty for hitting obstacles (reduced from -10.0)
                 
             self.total_reward += reward
                 
@@ -121,7 +121,7 @@ class QLearningAgent(Agent):
         next_q_values = [self.q_values.get((next_state, a), 0.0) for a in next_actions]
         max_next_q = max(next_q_values) if next_q_values else 0.0
         
-        # Q-learning update formula with higher learning rate
+        # Q-learning update formula
         new_q = current_q + self.learning_rate * (
             reward + self.discount_factor * max_next_q - current_q
         )
@@ -176,7 +176,7 @@ class QLearningAgent(Agent):
             # Penalize actions leading to obstacles
             next_pos = self.get_next_state(self.position, action)
             if next_pos in self.model and self.model[next_pos] == 1:  # Obstacle
-                q_value -= 5.0  # Add strong penalty for obstacle
+                q_value -= 5.0  # Penalty for obstacle (reduced from previous implementations)
                 
             q_values.append(q_value)
         
