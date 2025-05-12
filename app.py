@@ -72,6 +72,29 @@ def is_path_valid(grid, start, goal):
                 
     return False
 
+def is_agent_trapped(grid, pos):
+    """
+    Check if an agent at the given position is trapped by obstacles.
+    
+    Args:
+        grid: 2D grid of the environment
+        pos: Position to check (x, y)
+        
+    Returns:
+        bool: True if trapped (all directions blocked), False otherwise
+    """
+    x, y = pos
+    width = len(grid[0])
+    height = len(grid)
+    
+    # Check all four directions
+    for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+        nx, ny = x + dy, y + dx
+        if 0 <= nx < width and 0 <= ny < height and grid[ny][nx] != 1:
+            return False  # At least one direction is open
+            
+    return True  # All directions are blocked
+
 @app.route('/')
 def index():
     """Render the main page"""
@@ -156,6 +179,14 @@ def create_structured_maze(env, start_pos, goal_pos):
         temp_grid[y][0] = env.OBSTACLE
         temp_grid[y][env.width-1] = env.OBSTACLE
     
+    # Define a safe zone around the start position
+    safe_zone = [start_pos]
+    sx, sy = start_pos
+    for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+        safe_pos = (sx + dx, sy + dy)
+        if 0 < safe_pos[0] < env.width-1 and 0 < safe_pos[1] < env.height-1:
+            safe_zone.append(safe_pos)
+    
     # Calculate evenly distributed gap positions
     x_gaps = [env.width // 4, env.width // 2, 3 * env.width // 4]
     y_gaps = [env.height // 3, 2 * env.height // 3]
@@ -167,6 +198,10 @@ def create_structured_maze(env, start_pos, goal_pos):
         gap_y = random.choice(y_gaps)
         
         for y in range(1, env.height-1):
+            # Skip safe zone around the start position
+            if (x, y) in safe_zone:
+                continue
+                
             if y != gap_y:
                 # Check if adding this obstacle would still allow a path
                 temp_grid[y][x] = env.OBSTACLE
@@ -182,6 +217,10 @@ def create_structured_maze(env, start_pos, goal_pos):
         gap_x = random.choice(x_gaps)
         
         for x in range(1, env.width-1):
+            # Skip safe zone around the start position
+            if (x, y) in safe_zone:
+                continue
+                
             if x != gap_x:
                 # Check if adding this obstacle would still allow a path
                 temp_grid[y][x] = env.OBSTACLE
@@ -189,6 +228,37 @@ def create_structured_maze(env, start_pos, goal_pos):
                     env.add_obstacle((x, y))
                 else:
                     temp_grid[y][x] = env.EMPTY
+    
+    # Final check for path validity
+    grid_copy = [[env.EMPTY for _ in range(env.width)] for _ in range(env.height)]
+    for y in range(env.height):
+        for x in range(env.width):
+            grid_copy[y][x] = env.grid[y][x]
+    
+    # Ensure agent isn't trapped at start
+    if is_agent_trapped(grid_copy, start_pos):
+        # Clear obstacles around start position
+        sx, sy = start_pos
+        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            nx, ny = sx + dx, sy + dy
+            if 0 <= nx < env.width and 0 <= ny < env.height and env.grid[ny][nx] == env.OBSTACLE:
+                env.grid[ny][nx] = env.EMPTY
+                grid_copy[ny][nx] = env.EMPTY
+    
+    # Final path validation
+    if not is_path_valid(grid_copy, start_pos, goal_pos):
+        print("WARNING: Final maze verification failed. Clearing path obstacles...")
+        # Clear a direct path to goal as last resort
+        gx, gy = goal_pos
+        sx, sy = start_pos
+        
+        # Clear horizontal path
+        for x in range(min(sx, gx), max(sx, gx) + 1):
+            env.grid[sy][x] = env.EMPTY
+            
+        # Clear vertical path
+        for y in range(min(sy, gy), max(sy, gy) + 1):
+            env.grid[y][gx] = env.EMPTY
 
 def create_reflex_agent():
     """Create and configure a reflex agent with rules"""
