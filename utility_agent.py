@@ -90,7 +90,7 @@ class UtilityBasedAgent(Agent):
             return
             
         # Update utilities through value iteration
-        for _ in range(5):  # Just a few iterations for performance
+        for _ in range(30):  # Increased iterations for better convergence
             new_utilities = self.utilities.copy()
             
             for pos in self.model:
@@ -113,8 +113,12 @@ class UtilityBasedAgent(Agent):
                     neighbor_utility = self.utilities.get(neighbor, 0.0)
                     
                     # Calculate utility of moving to this neighbor
-                    # (simple reward function: -0.1 per step + discounted future utility)
-                    utility = -0.1 + self.discount_factor * neighbor_utility
+                    # Stronger reward for moving toward goal
+                    reward = -0.1  # Step cost
+                    if neighbor in self.goal_positions:
+                        reward = 10.0  # Goal reward
+                    
+                    utility = reward + self.discount_factor * neighbor_utility
                     
                     # Track maximum utility
                     if utility > max_utility:
@@ -154,8 +158,10 @@ class UtilityBasedAgent(Agent):
             next_pos = (x+1, y)
             
         # If next position is unknown or an obstacle, return low utility
-        if next_pos not in self.model or self.model[next_pos] == 1:
-            return -5.0
+        if next_pos not in self.model:
+            return -2.0  # Unknown cell penalty
+        if self.model[next_pos] == 1:  # OBSTACLE
+            return -10.0  # Strong obstacle penalty
             
         # Return utility of next position
         return self.utilities.get(next_pos, 0.0)
@@ -167,10 +173,37 @@ class UtilityBasedAgent(Agent):
         Returns:
             An action to be performed
         """
+        # If at goal, stay there
+        if self.position in self.goal_positions:
+            self.current_action = None
+            return None
+            
         # Exploration: occasionally take a random action
         if random.random() < self.exploration_rate:
+            # Focus on valid actions only
             actions = ["up", "down", "left", "right"]
-            self.current_action = random.choice(actions)
+            valid_actions = []
+            
+            for action in actions:
+                x, y = self.position
+                if action == "up":
+                    next_pos = (x, y-1)
+                elif action == "down":
+                    next_pos = (x, y+1)
+                elif action == "left":
+                    next_pos = (x-1, y)
+                elif action == "right":
+                    next_pos = (x+1, y)
+                    
+                if next_pos not in self.model or self.model[next_pos] != 1:  # Not an obstacle
+                    valid_actions.append(action)
+                    
+            if valid_actions:
+                self.current_action = random.choice(valid_actions)
+            else:
+                # If all directions are obstacles, try random anyway
+                self.current_action = random.choice(actions)
+            
             return self.current_action
             
         # Otherwise, choose the action with highest utility

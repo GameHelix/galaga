@@ -10,7 +10,7 @@ import time
 from reflex_agent import SimpleReflexAgent
 from model_agent import ModelBasedAgent
 from utility_agent import UtilityBasedAgent
-from q_learning_agent import QLearningAgent  # Import the new agent
+from q_learning_agent import QLearningAgent
 from grid_world import GridWorld
 
 app = Flask(__name__)
@@ -25,6 +25,15 @@ simulation_data = {
     'performance': [],
     'visit_counts': {}
 }
+
+def convert_dict_keys_to_str(obj):
+    """Convert all dictionary tuple keys to strings to make them JSON serializable"""
+    if isinstance(obj, dict):
+        return {str(k): convert_dict_keys_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_dict_keys_to_str(item) for item in obj]
+    else:
+        return obj
 
 @app.route('/')
 def index():
@@ -84,8 +93,8 @@ def initialize_simulation():
         current_agent = ModelBasedAgent("Explorer")
     elif agent_type == 'utility':
         current_agent = UtilityBasedAgent("Explorer", exploration_rate=0.2)
-    elif agent_type == 'qlearning':  # Add the new agent type
-        current_agent = QLearningAgent("Q-Learner", learning_rate=0.1, discount_factor=0.9, exploration_rate=0.3)
+    elif agent_type == 'qlearning':
+        current_agent = QLearningAgent("Q-Learner", learning_rate=0.2, discount_factor=0.9, exploration_rate=0.3)
     else:
         # Default to reflex agent
         current_agent = create_reflex_agent()
@@ -148,7 +157,7 @@ def step_simulation():
     
     # Update visit counts if available (for heat map)
     if hasattr(current_agent, 'visit_counts'):
-        simulation_data['visit_counts'] = current_agent.visit_counts
+        simulation_data['visit_counts'] = convert_dict_keys_to_str(current_agent.visit_counts)
     
     # Check if goal is reached
     goal_reached = False
@@ -181,30 +190,26 @@ def step_simulation():
         agent_info = {
             "model_size": len(current_agent.model),
             "exploration_rate": current_agent.exploration_rate,
-            "utilities": {str(pos): val for pos, val in current_agent.utilities.items()}
+            "utilities": convert_dict_keys_to_str(current_agent.utilities)
         }
     elif isinstance(current_agent, QLearningAgent):
         agent_type = "qlearning"
         
-        # Prepare Q-values for visualization
-        q_values_for_viz = {}
-        for (pos, action), value in current_agent.q_values.items():
-            pos_str = str(pos)
-            if pos_str not in q_values_for_viz:
-                q_values_for_viz[pos_str] = {}
-            q_values_for_viz[pos_str][action] = value
-            
+        # Convert q_values to use string keys
+        q_values_dict = convert_dict_keys_to_str(current_agent.q_values)
+        visit_counts_dict = convert_dict_keys_to_str(current_agent.visit_counts) if hasattr(current_agent, 'visit_counts') else {}
+        
         agent_info = {
             "model_size": len(current_agent.model),
             "exploration_rate": current_agent.exploration_rate,
             "learning_rate": current_agent.learning_rate,
             "discount_factor": current_agent.discount_factor,
             "total_reward": current_agent.total_reward,
-            "q_values": q_values_for_viz,
-            "visit_counts": current_agent.visit_counts
+            "q_values": q_values_dict,
+            "visit_counts": visit_counts_dict
         }
         
-        # Generate a heatmap grid of maximum Q-values for each cell
+        # Generate q_value_grid if available
         if hasattr(current_agent, 'get_q_value_grid'):
             agent_info["q_value_grid"] = current_agent.get_q_value_grid(current_env.width, current_env.height)
     

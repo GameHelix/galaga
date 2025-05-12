@@ -77,7 +77,7 @@ class ModelBasedAgent(Agent):
                     
     def plan_path(self) -> List[str]:
         """
-        Plan a path to the goal using the current model.
+        Plan a path to the goal using A* algorithm.
         
         Returns:
             A list of actions (directions) to reach the goal
@@ -86,22 +86,20 @@ class ModelBasedAgent(Agent):
         if not self.position or not self.goal_position:
             return []
             
-        # Simple A* pathfinding
-        start = self.position
-        goal = self.goal_position
+        # A* search
+        open_set = set([self.position])
+        closed_set = set()
         
-        # A* algorithm
-        open_set = [start]
+        g_score = {self.position: 0}  # Cost from start to current node
+        f_score = {self.position: self._heuristic(self.position, self.goal_position)}  # Estimated total cost
+        
         came_from = {}
-        
-        g_score = {start: 0}  # Cost from start to current node
-        f_score = {start: self._heuristic(start, goal)}  # Estimated total cost
         
         while open_set:
             # Find node with lowest f_score
             current = min(open_set, key=lambda pos: f_score.get(pos, float('inf')))
             
-            if current == goal:
+            if current == self.goal_position:
                 # Reconstruct the path
                 path = []
                 while current in came_from:
@@ -120,27 +118,29 @@ class ModelBasedAgent(Agent):
                 return path
                 
             open_set.remove(current)
+            closed_set.add(current)
             
             # Check each neighbor
             x, y = current
             neighbors = [(x, y-1), (x, y+1), (x-1, y), (x+1, y)]
             
             for neighbor in neighbors:
-                # Skip if obstacle or unknown
-                if self.model.get(neighbor, -1) == 1:  # OBSTACLE
+                # Skip if obstacle or unknown or already evaluated
+                if neighbor in closed_set or self.model.get(neighbor, -1) == 1:  # OBSTACLE
                     continue
                     
                 # Tentative g_score
                 tentative_g = g_score[current] + 1
                 
-                if neighbor not in g_score or tentative_g < g_score[neighbor]:
-                    # This path is better
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g
-                    f_score[neighbor] = tentative_g + self._heuristic(neighbor, goal)
+                if neighbor not in open_set:
+                    open_set.add(neighbor)
+                elif tentative_g >= g_score.get(neighbor, float('inf')):
+                    continue
                     
-                    if neighbor not in open_set:
-                        open_set.append(neighbor)
+                # This path is better
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f_score[neighbor] = tentative_g + self._heuristic(neighbor, self.goal_position)
                         
         # If we get here, no path was found
         return []

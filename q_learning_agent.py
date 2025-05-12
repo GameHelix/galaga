@@ -13,8 +13,8 @@ class QLearningAgent(Agent):
     A reinforcement learning agent that uses Q-learning to make decisions.
     """
     
-    def __init__(self, name: str = "QLearningAgent", learning_rate: float = 0.1, 
-                 discount_factor: float = 0.9, exploration_rate: float = 0.2):
+    def __init__(self, name: str = "QLearningAgent", learning_rate: float = 0.2, 
+                 discount_factor: float = 0.9, exploration_rate: float = 0.3):
         """
         Initialize the agent.
         
@@ -39,7 +39,7 @@ class QLearningAgent(Agent):
         self.exploration_rate = exploration_rate
         self.initial_exploration_rate = exploration_rate
         self.min_exploration_rate = 0.05
-        self.exploration_decay = 0.99  # Decay factor for exploration
+        self.exploration_decay = 0.995  # Slower decay for better exploration
         
         self.current_action = None
         self.steps_taken = 0
@@ -70,25 +70,26 @@ class QLearningAgent(Agent):
         # Update the model with information about adjacent cells
         if "adjacents" in percept and self.position:
             x, y = self.position
-            if "up" in percept["adjacents"]:
-                self.model[(x, y-1)] = percept["adjacents"]["up"]
-            if "down" in percept["adjacents"]:
-                self.model[(x, y+1)] = percept["adjacents"]["down"]
-            if "left" in percept["adjacents"]:
-                self.model[(x-1, y)] = percept["adjacents"]["left"]
-            if "right" in percept["adjacents"]:
-                self.model[(x+1, y)] = percept["adjacents"]["right"]
+            for direction, content in percept["adjacents"].items():
+                if direction == "up":
+                    self.model[(x, y-1)] = content
+                elif direction == "down":
+                    self.model[(x, y+1)] = content
+                elif direction == "left":
+                    self.model[(x-1, y)] = content
+                elif direction == "right":
+                    self.model[(x+1, y)] = content
                 
         # Update Q-values if we've taken an action before
         if self.last_position and self.last_action:
-            # Calculate reward: -0.1 for each step, +10 for reaching goal, -5 for hitting obstacle
+            # Calculate reward
             reward = -0.1  # Small negative reward for each step (encourages efficiency)
             
             if percept["cell_content"] == 2:  # GOAL
-                reward = 10.0
+                reward = 20.0  # Higher reward for reaching goal
                 self.goal_reached = True
-            elif self.position == self.last_position:  # Didn't move (hit obstacle)
-                reward = -5.0
+            elif self.position == self.last_position:  # Hit obstacle
+                reward = -10.0  # Stronger penalty for hitting obstacles
                 
             self.total_reward += reward
                 
@@ -99,7 +100,7 @@ class QLearningAgent(Agent):
         self.steps_taken += 1
         self.exploration_rate = max(
             self.min_exploration_rate,
-            self.initial_exploration_rate * math.exp(-0.01 * self.steps_taken)
+            self.initial_exploration_rate * (0.95 ** (self.steps_taken / 20))
         )
             
     def update_q_value(self, state: Tuple[int, int], action: str, reward: float, next_state: Tuple[int, int]) -> None:
@@ -120,7 +121,7 @@ class QLearningAgent(Agent):
         next_q_values = [self.q_values.get((next_state, a), 0.0) for a in next_actions]
         max_next_q = max(next_q_values) if next_q_values else 0.0
         
-        # Q-learning update formula: Q(s,a) += α * (reward + γ * max(Q(s',a')) - Q(s,a))
+        # Q-learning update formula with higher learning rate
         new_q = current_q + self.learning_rate * (
             reward + self.discount_factor * max_next_q - current_q
         )
@@ -166,9 +167,20 @@ class QLearningAgent(Agent):
             The best action according to current Q-values
         """
         actions = ["up", "down", "left", "right"]
-        q_values = [self.q_values.get((self.position, a), 0.0) for a in actions]
+        q_values = []
         
-        # Find the action with the highest Q-value
+        for action in actions:
+            # Get Q-value for this action
+            q_value = self.q_values.get((self.position, action), 0.0)
+            
+            # Penalize actions leading to obstacles
+            next_pos = self.get_next_state(self.position, action)
+            if next_pos in self.model and self.model[next_pos] == 1:  # Obstacle
+                q_value -= 5.0  # Add strong penalty for obstacle
+                
+            q_values.append(q_value)
+        
+        # Find action with highest modified Q-value
         max_q = max(q_values)
         best_actions = [a for a, q in zip(actions, q_values) if q == max_q]
         
@@ -187,8 +199,14 @@ class QLearningAgent(Agent):
             self.current_action = None
             return None
             
+        # Dynamic exploration rate based on steps taken
+        current_exploration = max(
+            self.min_exploration_rate, 
+            self.exploration_rate * (0.9 ** (self.steps_taken / 10))
+        )
+            
         # Exploration: with probability epsilon, choose a random action
-        if random.random() < self.exploration_rate:
+        if random.random() < current_exploration:
             # Choose a random valid action (avoid known obstacles)
             valid_actions = []
             x, y = self.position
