@@ -385,9 +385,3 @@ function createCustomVisualization(data) {
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-<p align="center">
-  <em>Created by Ismat-Samadov - AI Agent Implementation Framework</em>
-</p>
