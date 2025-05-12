@@ -40,7 +40,9 @@ def index():
     """Render the main page"""
     return render_template('index.html')
 
+@app.route('/init', methods=['POST'])
 def initialize_simulation():
+    """Initialize a new simulation based on agent type"""
     global current_env, current_agent, simulation_running, step_count, simulation_data
     
     # Get agent type from request
@@ -55,12 +57,13 @@ def initialize_simulation():
         'visit_counts': {}
     }
     
-    # Create environment with more height for a better labyrinth
+    # Create environment
     width = 15
-    height = 10
+    height = 8
     current_env = GridWorld(width=width, height=height, name="Web Visualization")
     
-    # Set up the outer walls
+    # Set up the maze structure
+    # Add outer walls
     for x in range(current_env.width):
         current_env.add_obstacle((x, 0))
         current_env.add_obstacle((x, current_env.height-1))
@@ -68,67 +71,18 @@ def initialize_simulation():
         current_env.add_obstacle((0, y))
         current_env.add_obstacle((current_env.width-1, y))
     
-    # Create a more interesting labyrinth with multiple paths and dead ends
-    
-    # Main pathways - create some diagonal/zigzag patterns
-    # Vertical barriers with strategic openings
-    vertical_walls = [
-        # x positions for vertical walls
-        (2, [2, 5, 8]),     # Wall at x=2 with openings at y=2,5,8
-        (4, [1, 4, 7]),     # Wall at x=4 with different openings
-        (6, [3, 6, 8]),
-        (8, [2, 5, 7]),
-        (10, [1, 4, 8]),
-        (12, [3, 6, 9])
-    ]
-    
-    for x, openings in vertical_walls:
+    # Add some internal walls to create a maze
+    for x in range(3, 12, 4):
         for y in range(1, current_env.height-1):
-            if y not in openings:
+            if y != 3:
                 current_env.add_obstacle((x, y))
-    
-    # Horizontal barriers with strategic openings
-    horizontal_walls = [
-        # y positions for horizontal walls
-        (2, [3, 7, 11, 13]),  # Wall at y=2 with openings at x=3,7,11,13
-        (4, [1, 5, 9]),
-        (6, [3, 7, 11]),
-        (8, [1, 5, 9, 13])
-    ]
-    
-    for y, openings in horizontal_walls:
+                
+    for y in range(3, 7, 3):
         for x in range(1, current_env.width-1):
-            # Skip adding obstacles at the openings or where vertical walls already exist
-            if x not in openings and x not in [wall[0] for wall in vertical_walls]:
+            if x != 5 and x != 9:
                 current_env.add_obstacle((x, y))
     
-    # Add some dead ends and additional maze features
-    dead_ends = [
-        (3, 3), (3, 7), 
-        (5, 5), (7, 3),
-        (9, 7), (11, 5),
-        (5, 9), (9, 3),
-        (7, 7), (11, 9)
-    ]
-    
-    for x, y in dead_ends:
-        current_env.add_obstacle((x, y))
-    
-    # Make sure there's a valid path to the goal
-    # Add a few guaranteed path segments
-    path_clearance = [
-        (1, 3), (1, 5), (1, 7),
-        (3, 1), (5, 1), (7, 1), 
-        (9, 1), (11, 1), (13, 1),
-        (13, 3), (13, 5), (13, 7)
-    ]
-    
-    for x, y in path_clearance:
-        if (x, y) in current_env.grid and current_env.grid[y][x] == current_env.OBSTACLE:
-            # Remove the obstacle to ensure a path
-            current_env.grid[y][x] = current_env.EMPTY
-    
-    # Add a goal near the bottom-right corner
+    # Add a goal
     goal_pos = (current_env.width - 2, current_env.height - 2)
     current_env.add_goal(goal_pos)
     
