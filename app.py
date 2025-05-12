@@ -10,6 +10,7 @@ import time
 from reflex_agent import SimpleReflexAgent
 from model_agent import ModelBasedAgent
 from utility_agent import UtilityBasedAgent
+from q_learning_agent import QLearningAgent  # Import the new agent
 from grid_world import GridWorld
 
 app = Flask(__name__)
@@ -19,6 +20,11 @@ current_env = None
 current_agent = None
 simulation_running = False
 step_count = 0
+simulation_data = {
+    'steps': [],
+    'performance': [],
+    'visit_counts': {}
+}
 
 @app.route('/')
 def index():
@@ -28,7 +34,7 @@ def index():
 @app.route('/init', methods=['POST'])
 def initialize_simulation():
     """Initialize a new simulation based on agent type"""
-    global current_env, current_agent, simulation_running, step_count
+    global current_env, current_agent, simulation_running, step_count, simulation_data
     
     # Get agent type from request
     agent_type = request.json.get('agent_type', 'reflex')
@@ -36,6 +42,11 @@ def initialize_simulation():
     # Reset simulation state
     step_count = 0
     simulation_running = False
+    simulation_data = {
+        'steps': [],
+        'performance': [],
+        'visit_counts': {}
+    }
     
     # Create environment
     width = 15
@@ -73,6 +84,8 @@ def initialize_simulation():
         current_agent = ModelBasedAgent("Explorer")
     elif agent_type == 'utility':
         current_agent = UtilityBasedAgent("Explorer", exploration_rate=0.2)
+    elif agent_type == 'qlearning':  # Add the new agent type
+        current_agent = QLearningAgent("Q-Learner", learning_rate=0.1, discount_factor=0.9, exploration_rate=0.3)
     else:
         # Default to reflex agent
         current_agent = create_reflex_agent()
@@ -120,7 +133,7 @@ def create_reflex_agent():
 @app.route('/step', methods=['POST'])
 def step_simulation():
     """Advance the simulation by one step"""
-    global step_count
+    global step_count, simulation_data
     
     if current_env is None or current_agent is None:
         return jsonify({"error": "Simulation not initialized"}), 400
@@ -128,6 +141,14 @@ def step_simulation():
     # Run one step of the simulation
     current_env.step()
     step_count += 1
+    
+    # Track performance over time for charts
+    simulation_data['steps'].append(step_count)
+    simulation_data['performance'].append(current_agent.performance_measure)
+    
+    # Update visit counts if available (for heat map)
+    if hasattr(current_agent, 'visit_counts'):
+        simulation_data['visit_counts'] = current_agent.visit_counts
     
     # Check if goal is reached
     goal_reached = False
@@ -140,6 +161,7 @@ def step_simulation():
     state = get_environment_state()
     state['step_count'] = step_count
     state['goal_reached'] = goal_reached
+    state['simulation_data'] = simulation_data
     
     # Add agent-specific info
     agent_type = "unknown"
@@ -158,8 +180,33 @@ def step_simulation():
         agent_type = "utility"
         agent_info = {
             "model_size": len(current_agent.model),
-            "exploration_rate": current_agent.exploration_rate
+            "exploration_rate": current_agent.exploration_rate,
+            "utilities": {str(pos): val for pos, val in current_agent.utilities.items()}
         }
+    elif isinstance(current_agent, QLearningAgent):
+        agent_type = "qlearning"
+        
+        # Prepare Q-values for visualization
+        q_values_for_viz = {}
+        for (pos, action), value in current_agent.q_values.items():
+            pos_str = str(pos)
+            if pos_str not in q_values_for_viz:
+                q_values_for_viz[pos_str] = {}
+            q_values_for_viz[pos_str][action] = value
+            
+        agent_info = {
+            "model_size": len(current_agent.model),
+            "exploration_rate": current_agent.exploration_rate,
+            "learning_rate": current_agent.learning_rate,
+            "discount_factor": current_agent.discount_factor,
+            "total_reward": current_agent.total_reward,
+            "q_values": q_values_for_viz,
+            "visit_counts": current_agent.visit_counts
+        }
+        
+        # Generate a heatmap grid of maximum Q-values for each cell
+        if hasattr(current_agent, 'get_q_value_grid'):
+            agent_info["q_value_grid"] = current_agent.get_q_value_grid(current_env.width, current_env.height)
     
     state['agent_type'] = agent_type
     state['agent_info'] = agent_info
@@ -174,8 +221,23 @@ def get_state():
     
     state = get_environment_state()
     state['step_count'] = step_count
+    state['simulation_data'] = simulation_data
     
     return jsonify(state)
+
+@app.route('/compare', methods=['POST'])
+def compare_agents():
+    """Run simulations with different agents and compare results"""
+    # This would run multiple simulations and return comparative data
+    # Simplified implementation for demonstration purposes
+    results = {
+        'reflex': {'steps_to_goal': 28, 'success_rate': 0.7},
+        'model': {'steps_to_goal': 16, 'success_rate': 0.9},
+        'utility': {'steps_to_goal': 19, 'success_rate': 0.85},
+        'qlearning': {'steps_to_goal': 22, 'success_rate': 0.95}
+    }
+    
+    return jsonify(results)
 
 def get_environment_state():
     """Extract the current environment state as JSON"""

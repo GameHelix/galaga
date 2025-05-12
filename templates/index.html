@@ -3,74 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent Implementation Visualization</title>
+    <title>AI Agent Implementation Visualization</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
-    <div class="container mt-4">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-robot me-2"></i>AI Agent Implementation
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#simulation">Simulation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#comparison">Agent Comparison</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4" id="simulation">
         <h1 class="text-center mb-4">AI Agent Simulation</h1>
         
         <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h4>Grid World</h4>
+            <!-- Left Column: Grid World -->
+            <div class="col-lg-8">
+                <div class="card mb-4 shadow">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h4 class="m-0">
+                            <i class="bi bi-grid-3x3-gap me-2"></i>Grid World
+                        </h4>
+                        <div class="badge bg-success" id="step-counter">Steps: 0</div>
                     </div>
                     <div class="card-body">
-                        <div id="grid-container" class="grid-container"></div>
+                        <div id="grid-container" class="grid-container position-relative">
+                            <!-- Grid will be rendered here -->
+                            <div id="overlay-container" class="position-absolute top-0 start-0 w-100 h-100">
+                                <!-- Overlays for heatmaps etc. will be rendered here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Visualization Options -->
+                        <div class="mt-3 d-flex justify-content-center">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="visualization" id="viz-normal" checked>
+                                <label class="btn btn-outline-primary" for="viz-normal">Normal</label>
+                                
+                                <input type="radio" class="btn-check" name="visualization" id="viz-heatmap">
+                                <label class="btn btn-outline-primary" for="viz-heatmap">Visit Heatmap</label>
+                                
+                                <input type="radio" class="btn-check" name="visualization" id="viz-values">
+                                <label class="btn btn-outline-primary" for="viz-values">Value Map</label>
+                                
+                                <input type="radio" class="btn-check" name="visualization" id="viz-policy">
+                                <label class="btn btn-outline-primary" for="viz-policy">Policy Map</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Chart -->
+                <div class="card mb-4 shadow">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="m-0">
+                            <i class="bi bi-graph-up me-2"></i>Performance Metrics
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="performance-chart" height="200"></canvas>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h4>Controls</h4>
+            <!-- Right Column: Controls & Info -->
+            <div class="col-lg-4">
+                <!-- Agent Selection & Controls -->
+                <div class="card mb-4 shadow">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="m-0">
+                            <i class="bi bi-joystick me-2"></i>Controls
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label">Agent Type</label>
+                            <label class="form-label fw-bold">Agent Type</label>
                             <select id="agent-type" class="form-select">
                                 <option value="reflex">Simple Reflex Agent</option>
                                 <option value="model">Model-Based Agent</option>
                                 <option value="utility">Utility-Based Agent</option>
+                                <option value="qlearning">Q-Learning Agent</option>
                             </select>
                         </div>
-                        <button id="initialize-btn" class="btn btn-primary w-100 mb-2">Initialize</button>
-                        <button id="step-btn" class="btn btn-success w-100 mb-2" disabled>Step</button>
-                        <button id="autorun-btn" class="btn btn-warning w-100" disabled>Auto Run</button>
+                        <button id="initialize-btn" class="btn btn-primary w-100 mb-2">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Initialize
+                        </button>
+                        <div class="d-grid gap-2">
+                            <button id="step-btn" class="btn btn-success" disabled>
+                                <i class="bi bi-skip-forward me-2"></i>Step
+                            </button>
+                            <button id="autorun-btn" class="btn btn-warning" disabled>
+                                <i class="bi bi-play-fill me-2"></i>Auto Run
+                            </button>
+                            <button id="reset-btn" class="btn btn-danger" disabled>
+                                <i class="bi bi-x-circle me-2"></i>Reset
+                            </button>
+                        </div>
+                        
+                        <!-- Speed Control -->
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">Simulation Speed</label>
+                            <input type="range" class="form-range" id="speed-control" min="100" max="1000" step="100" value="500">
+                            <div class="d-flex justify-content-between">
+                                <small>Fast</small>
+                                <small>Slow</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="card">
-                    <div class="card-header">
-                        <h4>Agent Info</h4>
+                <!-- Agent Information -->
+                <div class="card mb-4 shadow">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="m-0">
+                            <i class="bi bi-info-circle me-2"></i>Agent Info
+                        </h4>
                     </div>
                     <div class="card-body">
-                        <div id="agent-info">
+                        <div id="agent-info" class="agent-info-container">
                             <p>No simulation running</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simulation Log -->
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h4 class="m-0">
+                            <i class="bi bi-list-check me-2"></i>Simulation Log
+                        </h4>
+                        <button id="clear-log-btn" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="simulation-log" class="simulation-log"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent Comparison Section -->
+        <div class="mt-5 mb-5" id="comparison">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="m-0">Agent Comparison</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="comparison-chart" height="300"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="mb-3">Agent Capabilities</h4>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Agent Type</th>
+                                        <th>Learning</th>
+                                        <th>Planning</th>
+                                        <th>Memory</th>
+                                        <th>Adaptability</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Simple Reflex</td>
+                                        <td><i class="bi bi-x-circle text-danger"></i></td>
+                                        <td><i class="bi bi-x-circle text-danger"></i></td>
+                                        <td><i class="bi bi-x-circle text-danger"></i></td>
+                                        <td><i class="bi bi-x-circle text-danger"></i></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Model-Based</td>
+                                        <td><i class="bi bi-x-circle text-danger"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-dash-circle text-warning"></i></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Utility-Based</td>
+                                        <td><i class="bi bi-dash-circle text-warning"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Q-Learning</td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-dash-circle text-warning"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                        <td><i class="bi bi-check-circle text-success"></i></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button id="run-comparison-btn" class="btn btn-primary mt-3">Run Comparison</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="row mt-3">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4>Simulation Log</h4>
-                    </div>
-                    <div class="card-body">
-                        <div id="simulation-log" class="simulation-log"></div>
+        <!-- About Project Section -->
+        <div class="mt-5 mb-5" id="about">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h2 class="m-0">About This Project</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>Understanding Intelligent Agents</h4>
+                            <p>This project demonstrates different types of intelligent agents in AI, showing how they make decisions in a grid world environment:</p>
+                            
+                            <ul>
+                                <li><strong>Simple Reflex Agent:</strong> Makes decisions based only on current percepts using condition-action rules.</li>
+                                <li><strong>Model-Based Agent:</strong> Builds and maintains an internal model of the world to plan paths.</li>
+                                <li><strong>Utility-Based Agent:</strong> Makes decisions based on expected utility of outcomes.</li>
+                                <li><strong>Q-Learning Agent:</strong> Uses reinforcement learning to improve through experience.</li>
+                            </ul>
+                            
+                            <p>Each agent demonstrates different levels of intelligence and capabilities, from simple reactive behavior to complex learning.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>Implementation Details</h4>
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Python
+                                    <span class="badge bg-primary rounded-pill">Backend</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Flask
+                                    <span class="badge bg-primary rounded-pill">Web Server</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    JavaScript
+                                    <span class="badge bg-primary rounded-pill">Frontend</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Bootstrap 5
+                                    <span class="badge bg-primary rounded-pill">UI Framework</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Chart.js
+                                    <span class="badge bg-primary rounded-pill">Visualization</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-1">AI Agent Implementation Demo</p>
+            <p class="mb-0"><small>MIT License &copy; 2025</small></p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
