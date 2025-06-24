@@ -12,18 +12,22 @@
 
 ## 📸 Screenshots
 
+### Project Overview
 <p align="center">
   <img src="static/previews/about this roject.png" alt="About This Project" width="600">
 </p>
 
+### Agent Comparison
 <p align="center">
   <img src="static/previews/agent comprasion.png" alt="Agent Comparison" width="600">
 </p>
 
+### Performance Analytics
 <p align="center">
   <img src="static/previews/performance metrics.png" alt="Performance Metrics" width="600">
 </p>
 
+### Simulation Results
 <p align="center">
   <img src="static/previews/succesfull simulation.png" alt="Successful Simulation" width="600">
 </p>
