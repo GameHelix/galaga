@@ -13,16 +13,16 @@
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="static/previews/preview.png" alt="Main Interface" width="600">
+  <img src="static/previews/about this roject.png" alt="About This Project" width="600">
 </p>
 
 <div align="center">
-  <img src="static/previews/prewview2.png" alt="Agent Visualization" width="48%">
-  <img src="static/previews/preview3.png" alt="Performance Metrics" width="48%">
+  <img src="static/previews/agent comprasion.png" alt="Agent Comparison" width="48%">
+  <img src="static/previews/performance metrics.png" alt="Performance Metrics" width="48%">
 </div>
 
 <p align="center">
-  <img src="static/previews/preview4.png" alt="Q-Learning Agent Demo" width="600">
+  <img src="static/previews/succesfull simulation.png" alt="Successful Simulation" width="600">
 </p>
 
 ## 📑 Table of Contents
