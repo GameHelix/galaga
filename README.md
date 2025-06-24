@@ -16,10 +16,13 @@
   <img src="static/previews/about this roject.png" alt="About This Project" width="600">
 </p>
 
-<div align="center">
-  <img src="static/previews/agent comprasion.png" alt="Agent Comparison" width="48%">
-  <img src="static/previews/performance metrics.png" alt="Performance Metrics" width="48%">
-</div>
+<p align="center">
+  <img src="static/previews/agent comprasion.png" alt="Agent Comparison" width="600">
+</p>
+
+<p align="center">
+  <img src="static/previews/performance metrics.png" alt="Performance Metrics" width="600">
+</p>
 
 <p align="center">
   <img src="static/previews/succesfull simulation.png" alt="Successful Simulation" width="600">
