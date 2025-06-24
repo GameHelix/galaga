@@ -10,12 +10,24 @@
 
 > A comprehensive framework for implementing, visualizing, and comparing different types of intelligent agents in AI - from simple reflex agents to reinforcement learning agents.
 
+## 📸 Screenshots
+
 <p align="center">
-  <img src="https://plus.unsplash.com/premium_photo-1725985758251-b49c6b581d17?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Agent Visualization" width="600">
+  <img src="static/previews/preview.png" alt="Main Interface" width="600">
+</p>
+
+<div align="center">
+  <img src="static/previews/prewview2.png" alt="Agent Visualization" width="48%">
+  <img src="static/previews/preview3.png" alt="Performance Metrics" width="48%">
+</div>
+
+<p align="center">
+  <img src="static/previews/preview4.png" alt="Q-Learning Agent Demo" width="600">
 </p>
 
 ## 📑 Table of Contents
 
+- [Screenshots](#-screenshots)
 - [Overview](#-overview)
 - [Agent Types](#-agent-types)
 - [System Architecture](#-system-architecture)
